@@ -1,0 +1,4 @@
+Greetings Programs!
+I want vim to work!
+Make my night!
+vim adjusted!

@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 import re
-import os  # Added to allow interaction with the macOS terminal
 
 def get_value_by_label(container, label_text):
     """Finds a label and grabs the value sitting right next to it."""
@@ -104,26 +103,8 @@ if __name__ == "__main__":
     print("==========================================\n")
 
     while True:
-        # Updated prompt to let the user know about the new clear feature
-        user_input = input("Please input street name (or 'clear' to reset, 'exit' to quit): ").strip()
-        
-        if user_input.lower() in ['exit', 'quit', 'q']: 
-            break
-            
-        # --- NEW CLEAR SCREEN LOGIC ---
-        if user_input.lower() == 'clear':
-            # Sends the standard ANSI escape trigger to the macOS terminal
-            os.system('clear')
-            
-            # Re-draw the header for a clean UI state
-            print("==========================================")
-            print("   SARASOTA PROPERTY RESEARCH TOOL v1.3   ")
-            print("==========================================\n")
-            
-            # Jump back to the top of the 'while' loop immediately
-            continue
-        # ------------------------------
-        
+        user_input = input("Please input street name (e.g., RITA ST): ").strip()
+        if user_input.lower() in ['exit', 'quit', 'q']: break
         if not user_input: continue
 
         final_results = search_sarasota_real_estate(user_input)

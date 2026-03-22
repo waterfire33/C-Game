@@ -48,3 +48,11 @@ Located in `Player::handleInput()` - supports **dual input**:
 - **Physics tuning**: Player speed 280.0, harpoon fire speed via angle/velocity, retract speed 900-1400
 - **Particle emission**: Hardcoded 30 particles; angle/speed randomized
 - **Audio feedback**: Explosion pitch randomized (0.8-1.2), separate sounds for boom and shoot
+
+## Operational Protocol (Anti-Hallucination)
+To ensure optimal performance with Claude Opus 4.5, adhere strictly to the following:
+
+1.  **Strict Header Verification**: Do not guess function signatures. If a function is not visible in the open context or provided files, verify its existence in the header files or documentation before using it.
+2.  **Library Constraints**: strictly adhere to C++17 standards and SFML 3.0. Do not suggest features from C++20 or later, or external libraries (e.g., Boost) unless explicitly requested by the user.
+3.  **No Silent Assumptions**: If a file or piece of context is missing, explicitly ask the user for it. Do not generate code based on guessed file contents.
+4.  **Context Awareness**: Always consider the directory structure and open files. Use relative paths consistent with the project structure.

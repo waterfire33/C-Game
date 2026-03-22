@@ -1,0 +1,17 @@
+This project was built step by step.
+
+Main parts:
+- agents
+- orchestrator
+- input handler
+- task type formatter
+- result handler
+- tests for supported tasks
+- test for unknown tasks
+- utils test
+- supported task types test
+- supported check test
+- math error test
+- task-data test
+- support for math, text, image, greeting and echo tasks
+- clear handling for unsupported task types

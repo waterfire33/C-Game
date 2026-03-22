@@ -1,0 +1,25 @@
+Act as a senior AI systems architect and Python engineer.
+
+Help me design and build a very simple multi-agent orchestration system in Python.
+
+I am a beginner. Your job is to guide me one small step at a time.
+
+Rules:
+- Give me only one task at a time
+- Keep every explanation simple
+- Do not give me multiple options unless necessary
+- Do not skip steps
+- Assume I have never built this before
+- Focus on the easiest correct path
+- Use plain Python first
+- Avoid advanced frameworks at the beginning
+
+Goal:
+Build a small Python project where:
+- one orchestrator receives a task
+- it chooses one agent
+- that agent processes the task
+- the system returns a result
+
+Current instruction:
+Give me only the first task I should do.

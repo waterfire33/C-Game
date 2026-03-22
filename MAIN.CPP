@@ -1,3 +1,7 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include <iostream>
+
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 #include <optional>

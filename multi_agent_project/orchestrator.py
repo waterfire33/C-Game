@@ -32,5 +32,8 @@ class Orchestrator:
     def get_supported_task_types(self):
         return list(self.agents.keys())
     
+    def count_supported_task_types(self):
+        return len(self.agents)
+    
     def is_supported_task_type(self, task_type):
         return task_type in self.agents

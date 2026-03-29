@@ -10,6 +10,16 @@ def test_math_task():
     else:
         print("Math test failed")
 
+def test_math_words_task():
+    orchestrator = Orchestrator()
+    result = orchestrator.run_task("math", "add two numbers")
+
+    if result == "MathAgent result: 2 + 2 = 4":
+        print("Math words test passed")
+    else:
+        print("Math words test failed")
+
+
 
 def test_text_task():
     orchestrator = Orchestrator()
@@ -53,6 +63,7 @@ def test_echo_task():
 
 def run_tests():
     test_math_task()
+    test_math_words_task()
     test_text_task()
     test_image_task()
     test_greeting_task()

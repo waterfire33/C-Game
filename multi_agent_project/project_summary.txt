@@ -7,12 +7,20 @@ It has:
 - task type formatting
 - result handling
 - tests for supported tasks
-- a test for unknown tasks
+- a test for unsupported tasks
 - a utils test
 - a supported task types test
 - a supported check test
+- an unsupported check test
+- a supported count test
 - a math error test
-- a task-data test
+- a words-based math test
+- supported and unsupported task-data tests
+- a supported route test
+- an unsupported route test
 - support for math, text, image, greeting, and echo tasks
+- the total number of supported task types can be shown
+- the program can run in a loop and stop when the user types exit at either prompt
+- the program can show the supported task types again when the user types help
 - a clear message for unsupported task types
 - a README file

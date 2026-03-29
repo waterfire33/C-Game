@@ -7,11 +7,19 @@ Main parts:
 - task type formatter
 - result handler
 - tests for supported tasks
-- test for unknown tasks
+- test for unsupported tasks
 - utils test
 - supported task types test
 - supported check test
+- unsupported check test
+- supported count test
 - math error test
-- task-data test
+- words-based math test
+- supported and unsupported task-data tests
+- supported route test
+- unsupported route test
 - support for math, text, image, greeting and echo tasks
+- the total number of supported task types can be shown
+- the program can run in a loop and stop when the user types exit at either prompt
+- the program can show the supported task types again when the user types help
 - clear handling for unsupported task types

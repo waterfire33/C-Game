@@ -12,9 +12,11 @@ class Settings(BaseSettings):
     app_secret_key: str = Field(default="change-me", alias="APP_SECRET_KEY")
     access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     database_url: str = Field(alias="DATABASE_URL")
+    enable_telemetry: bool = Field(default=False, alias="ENABLE_TELEMETRY")
     redis_url: str = Field(alias="REDIS_URL")
     otel_service_name: str = Field(default="foundation-backend", alias="OTEL_SERVICE_NAME")
     otel_exporter_otlp_endpoint: str | None = Field(default=None, alias="OTEL_EXPORTER_OTLP_ENDPOINT")
+    otel_console_exporter_enabled: bool = Field(default=False, alias="OTEL_CONSOLE_EXPORTER_ENABLED")
     app_cors_origins: str = Field(default="http://localhost:3000", alias="APP_CORS_ORIGINS")
 
     @property

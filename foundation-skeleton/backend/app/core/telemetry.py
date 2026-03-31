@@ -17,9 +17,14 @@ logger = logging.getLogger(__name__)
 
 def configure_telemetry(engine=None) -> None:
     settings = get_settings()
+    if settings.app_env == "test":
+        logger.info("OpenTelemetry disabled for test environment")
+        return
+
     resource = Resource.create({"service.name": settings.otel_service_name, "deployment.environment": settings.app_env})
     provider = TracerProvider(resource=resource)
-    provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+    if settings.otel_console_exporter_enabled:
+        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
     if settings.otel_exporter_otlp_endpoint:
         provider.add_span_processor(

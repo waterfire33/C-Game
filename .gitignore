@@ -1,1 +1,10 @@
-ChiliApp
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+test_output.txt
+test_output.log
+foundation-skeleton/backend/.pip-install-output.txt
+foundation-skeleton/backend/.pytest-output.txt
+.venv/
+water/

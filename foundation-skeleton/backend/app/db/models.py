@@ -5,6 +5,44 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, SlugMixin, TenantScopedMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
+# Import workflow models so they're registered with Base.metadata
+from app.db.workflow_models import (  # noqa: F401
+    ApprovalRequestRecord,
+    ApprovalRequestStatus,
+    ActionRiskClass,
+    WorkflowDefinition,
+    WorkflowStepDefinition,
+    WorkflowRun,
+    WorkflowRunStep,
+    WorkflowEvent,
+    RunStatus,
+    StepStatus,
+    EventType,
+    VALID_RUN_TRANSITIONS,
+)
+from app.db.tool_models import (  # noqa: F401
+    ToolCall,
+    ToolDefinition,
+    TenantToolRegistration,
+    ToolExecutionStatus,
+    ToolFailureCategory,
+    ToolSourceType,
+)
+from app.db.mcp_models import (  # noqa: F401
+    MCPAuthConfig,
+    MCPAuthType,
+    MCPServerDescriptor,
+    MCPServerHealthStatus,
+)
+from app.db.planner_models import (  # noqa: F401
+    AgentRequest,
+    PlanRecord,
+    WorkflowType,
+    PlannerStrategy,
+    PlanStatus,
+    PlannerFailureCategory,
+)
+
 
 class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, SlugMixin, Base):
     __tablename__ = "tenants"

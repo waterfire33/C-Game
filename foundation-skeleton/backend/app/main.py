@@ -8,11 +8,20 @@ from app.core.config import get_settings
 from app.core.telemetry import configure_telemetry, instrument_fastapi
 from app.db.session import engine
 
-logging.basicConfig(level=logging.INFO)
-settings = get_settings()
-configure_telemetry(engine=engine)
 
-app = FastAPI(title="Foundation Backend", version="0.1.0")
+import contextlib
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    logging.basicConfig(level=logging.INFO)
+    settings = get_settings()
+    if settings.enable_telemetry:
+        configure_telemetry(engine=engine)
+        instrument_fastapi(app)
+    yield
+
+settings = get_settings()
+app = FastAPI(title="Foundation Backend", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -21,7 +30,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router)
-instrument_fastapi(app)
 
 
 @app.get("/")

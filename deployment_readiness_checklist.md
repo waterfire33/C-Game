@@ -36,7 +36,7 @@
 ## 6. Rollback readiness
 - last known good commit/tag recorded: yes
 - rollback runbook exists: yes
-- database restore decision rules documented: partially
+- database restore decision rules documented: yes
 - rollback owner identified: no
 
 ## 7. Current blockers

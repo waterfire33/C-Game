@@ -23,8 +23,8 @@
 ## 4. Application readiness
 - backend test suite passes locally: yes
 - backend ci passes in github actions: yes
-- app startup command documented: no
-- worker startup command documented: no
+- app startup command documented: yes
+- worker startup command documented: yes
 - health check endpoints identified: partially
 
 ## 5. Deployment process

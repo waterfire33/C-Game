@@ -47,17 +47,17 @@
 
 - blocker: database target is not confirmed
 - impact: deployment readiness remains incomplete
-- required fix: define and verify the real production database target
+- required fix: define and verify the real production database target in `production_targets.md`
 - priority: high
 
 - blocker: redis target is not confirmed
 - impact: deployment readiness remains incomplete
-- required fix: define and verify the real production redis target
+- required fix: define and verify the real production redis target in `production_targets.md`
 - priority: high
 
 - blocker: deployment operator is not assigned
 - impact: operational ownership is incomplete
-- required fix: assign deployment responsibility
+- required fix: assign deployment responsibility in `production_targets.md`
 - priority: medium
 
 ## 8. Status

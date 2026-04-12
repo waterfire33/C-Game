@@ -7,8 +7,8 @@
 - deployment operator: not yet assigned
 
 ## 2. Environment readiness
-- production environment variables defined: no
-- production secrets defined: no
+- production environment variables defined: yes
+- production secrets defined: yes
 - placeholder secrets blocked: no
 - database target confirmed: no
 - redis target confirmed: no
@@ -40,20 +40,25 @@
 - rollback owner identified: no
 
 ## 7. Current blockers
-- blocker: production environment variables and secrets are not fully defined
-- impact: deployment cannot be considered production-ready
-- required fix: define production env set, secret sources, and placeholder blocking rules
+- blocker: placeholder-secret blocking is documented but not enforced in code
+- impact: insecure production configuration could still start if unsafe values are supplied
+- required fix: add production startup validation for unsafe placeholder secrets
 - priority: high
 
-- blocker: app and worker startup commands are not yet formally documented
-- impact: deployment procedure is incomplete
-- required fix: document canonical backend startup and worker startup commands
+- blocker: database target is not confirmed
+- impact: deployment readiness remains incomplete
+- required fix: define and verify the real production database target
 - priority: high
 
-- blocker: database backup and restore procedure is not fully operationalized
-- impact: migration rollout risk remains high
-- required fix: define backup-before-migrate and restore decision process
+- blocker: redis target is not confirmed
+- impact: deployment readiness remains incomplete
+- required fix: define and verify the real production redis target
 - priority: high
+
+- blocker: deployment operator is not assigned
+- impact: operational ownership is incomplete
+- required fix: assign deployment responsibility
+- priority: medium
 
 ## 8. Status
 - draft

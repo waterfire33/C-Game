@@ -224,175 +224,178 @@ win.onkeypress(lambda: root.attributes("-fullscreen", False), "Escape")
 # 8. MAIN LOOP
 P_SPEED = 30
 while True:
-    win.update()
-    time.sleep(0.01)
+    try:
+        win.update()
+        time.sleep(0.01)
 
-    for star in stars:
-        star.setx(star.xcor() - star.speed_val)
-        if star.xcor() < -W_HALF:
-            star.goto(W_HALF, random.randint(int(-H_HALF), int(H_HALF)))
+        for star in stars:
+            star.setx(star.xcor() - star.speed_val)
+            if star.xcor() < -W_HALF:
+                star.goto(W_HALF, random.randint(int(-H_HALF), int(H_HALF)))
 
-    if game_active:
-        # Check freeze status and update paddle colors
-        paddle_a_frozen = time.time() < freeze_end_a
-        paddle_b_frozen = time.time() < freeze_end_b
-        
-        # Update paddle A color
-        if paddle_a_frozen:
-            paddle_a.color("light blue")
-        else:
-            paddle_a.color("white")
-        
-        # Update paddle B color
-        if paddle_b_frozen:
-            paddle_b.color("light blue")
-        else:
-            paddle_b.color("white")
-        
-        if not paddle_a_frozen:
-            if keys_pressed["q"] and paddle_a.ycor() < (H_HALF - 50): paddle_a.sety(paddle_a.ycor() + P_SPEED)
-            if keys_pressed["z"] and paddle_a.ycor() > -(H_HALF - 50): paddle_a.sety(paddle_a.ycor() - P_SPEED)
-        if not paddle_b_frozen:
-            if keys_pressed["i"] and paddle_b.ycor() < (H_HALF - 50): paddle_b.sety(paddle_b.ycor() + P_SPEED)
-            if keys_pressed["n"] and paddle_b.ycor() > -(H_HALF - 50): paddle_b.sety(paddle_b.ycor() - P_SPEED)
-
-        # Move all balls
-        for b in balls[:]:
-            b.setx(b.xcor() + b.dx); b.sety(b.ycor() + b.dy)
-
-            if b.ycor() > (H_HALF - 15):
-                b.sety(H_HALF - 15)
-                b.dy *= -1
-                wall_sound()
-            elif b.ycor() < -(H_HALF - 15):
-                b.sety(-(H_HALF - 15))
-                b.dy *= -1
-                wall_sound()
-
-            # Check scoring
-            if b.xcor() > W_HALF:
-                score_a += 1
-                score_sound(); update_scores()
-                if b == ball2:
-                    balls.remove(ball2); ball2.hideturtle()
-                else:
-                    serve_ball()
-            elif b.xcor() < -W_HALF:
-                score_b += 1
-                score_sound(); update_scores()
-                if b == ball2:
-                    balls.remove(ball2); ball2.hideturtle()
-                else:
-                    serve_ball()
-
-        if powerup_active:
-            pwr.sety((H_HALF - 100) * math.sin(time.time() * 2))
-            # Only check collision if cooldown has expired
-            if time.time() >= powerup_collision_cooldown:
-                for b in balls:
-                    if b.distance(pwr) < 60:
-                        pwr.hideturtle(); powerup_active = False
-                        if pwr_type == "size":
-                            if last_hitter == "A": 
-                                paddle_a.shapesize(10, 1); paddle_boost_hits["A"] = 2
-                            elif last_hitter == "B": 
-                                paddle_b.shapesize(10, 1); paddle_boost_hits["B"] = 2
-                        elif pwr_type == "ghost":
-                            ghost_mode = True; ghost_end = time.time() + 3
-                        elif pwr_type == "freeze":
-                            if last_hitter == "A":
-                                freeze_end_b = time.time() + 0.40
-                            elif last_hitter == "B":
-                                freeze_end_a = time.time() + 0.40
-                        else:  # split
-                            if len(balls) == 1:  # Only split once
-                                ball.color("red")
-                                # Set up second ball but don't show it yet
-                                ball2.goto(ball.xcor(), ball.ycor())
-                                ball2.dx = ball.dx
-                                ball2.dy = -ball.dy  # Opposite Y direction
-                                ball2.color("red")
-                                second_ball_spawn_time = time.time() + 1.5  # Spawn in 1.5 seconds
-                        break
-        else:
-            spawn_powerup()
-
-        # Check if second ball should spawn
-        if second_ball_spawn_time > 0 and time.time() >= second_ball_spawn_time:
-            ball2.showturtle()
-            balls.append(ball2)
-            second_ball_spawn_time = 0  # Reset timer
-
-        if ghost_mode:
-            if time.time() > ghost_end:
-                ghost_mode = False; ball.color("white")
+        if game_active:
+            # Check freeze status and update paddle colors
+            paddle_a_frozen = time.time() < freeze_end_a
+            paddle_b_frozen = time.time() < freeze_end_b
+            
+            # Update paddle A color
+            if paddle_a_frozen:
+                paddle_a.color("light blue")
             else:
-                ball.color("#222222")
+                paddle_a.color("white")
+            
+            # Update paddle B color
+            if paddle_b_frozen:
+                paddle_b.color("light blue")
+            else:
+                paddle_b.color("white")
+            
+            if not paddle_a_frozen:
+                if keys_pressed["q"] and paddle_a.ycor() < (H_HALF - 50): paddle_a.sety(paddle_a.ycor() + P_SPEED)
+                if keys_pressed["z"] and paddle_a.ycor() > -(H_HALF - 50): paddle_a.sety(paddle_a.ycor() - P_SPEED)
+            if not paddle_b_frozen:
+                if keys_pressed["i"] and paddle_b.ycor() < (H_HALF - 50): paddle_b.sety(paddle_b.ycor() + P_SPEED)
+                if keys_pressed["n"] and paddle_b.ycor() > -(H_HALF - 50): paddle_b.sety(paddle_b.ycor() - P_SPEED)
 
-        # Paddle B Collision with Momentum
-        for b in balls:
-            if (b.xcor() > paddle_b.xcor() - 20 and b.xcor() < paddle_b.xcor()) and (b.dx > 0):
-                hit_range = 110 if paddle_boost_hits["B"] > 0 else 60
-                if abs(b.ycor() - paddle_b.ycor()) < hit_range:
-                    b.setx(paddle_b.xcor() - 20)
-                    b.dx *= -1.05
-                    
-                    # End ghost mode on paddle collision
-                    if ghost_mode:
-                        ghost_mode = False
-                    
-                    # Check for moving hit
-                    if (keys_pressed["i"] or keys_pressed["n"]) and speed_boost_count < 3:
-                        b.dx *= 1.2  # Add 20% extra speed
-                        speed_boost_count += 1
-                        b.color("yellow")
+            # Move all balls
+            for b in balls[:]:
+                b.setx(b.xcor() + b.dx); b.sety(b.ycor() + b.dy)
+
+                if b.ycor() > (H_HALF - 15):
+                    b.sety(H_HALF - 15)
+                    b.dy *= -1
+                    wall_sound()
+                elif b.ycor() < -(H_HALF - 15):
+                    b.sety(-(H_HALF - 15))
+                    b.dy *= -1
+                    wall_sound()
+
+                # Check scoring
+                if b.xcor() > W_HALF:
+                    score_a += 1
+                    score_sound(); update_scores()
+                    if b == ball2:
+                        balls.remove(ball2); ball2.hideturtle()
                     else:
-                        b.color("white")
-
-                    # Cap speed at 15.0
-                    if abs(b.dx) > 15.0:
-                        b.dx = -15.0 if b.dx < 0 else 15.0
-
-                    b.dy = ((b.ycor() - paddle_b.ycor()) / 50.0) * abs(b.dx)
-                    if abs(b.dy) < 1.5: b.dy = 1.5 if b.dy >= 0 else -1.5
-                    last_hitter = "B"; paddle_sound()
-                    if paddle_boost_hits["B"] > 0:
-                        paddle_boost_hits["B"] -= 1
-                        if paddle_boost_hits["B"] == 0: paddle_b.shapesize(5, 1)
-
-        # Paddle A Collision with Momentum
-        for b in balls:
-            if (b.xcor() < paddle_a.xcor() + 20 and b.xcor() > paddle_a.xcor()) and (b.dx < 0):
-                hit_range = 110 if paddle_boost_hits["A"] > 0 else 60
-                if abs(b.ycor() - paddle_a.ycor()) < hit_range:
-                    b.setx(paddle_a.xcor() + 20)
-                    b.dx *= -1.05
-                    
-                    # End ghost mode on paddle collision
-                    if ghost_mode:
-                        ghost_mode = False
-                    
-                    # Check for moving hit
-                    if (keys_pressed["q"] or keys_pressed["z"]) and speed_boost_count < 3:
-                        b.dx *= 1.2  # Add 20% extra speed
-                        speed_boost_count += 1
-                        b.color("yellow")
+                        serve_ball()
+                elif b.xcor() < -W_HALF:
+                    score_b += 1
+                    score_sound(); update_scores()
+                    if b == ball2:
+                        balls.remove(ball2); ball2.hideturtle()
                     else:
-                        b.color("white")
+                        serve_ball()
 
-                    # Cap speed at 15.0
-                    if abs(b.dx) > 15.0:
-                        b.dx = -15.0 if b.dx < 0 else 15.0
+            if powerup_active:
+                pwr.sety((H_HALF - 100) * math.sin(time.time() * 2))
+                # Only check collision if cooldown has expired
+                if time.time() >= powerup_collision_cooldown:
+                    for b in balls:
+                        if b.distance(pwr) < 60:
+                            pwr.hideturtle(); powerup_active = False
+                            if pwr_type == "size":
+                                if last_hitter == "A": 
+                                    paddle_a.shapesize(10, 1); paddle_boost_hits["A"] = 2
+                                elif last_hitter == "B": 
+                                    paddle_b.shapesize(10, 1); paddle_boost_hits["B"] = 2
+                            elif pwr_type == "ghost":
+                                ghost_mode = True; ghost_end = time.time() + 3
+                            elif pwr_type == "freeze":
+                                if last_hitter == "A":
+                                    freeze_end_b = time.time() + 0.40
+                                elif last_hitter == "B":
+                                    freeze_end_a = time.time() + 0.40
+                            else:  # split
+                                if len(balls) == 1:  # Only split once
+                                    ball.color("red")
+                                    # Set up second ball but don't show it yet
+                                    ball2.goto(ball.xcor(), ball.ycor())
+                                    ball2.dx = ball.dx
+                                    ball2.dy = -ball.dy  # Opposite Y direction
+                                    ball2.color("red")
+                                    second_ball_spawn_time = time.time() + 1.5  # Spawn in 1.5 seconds
+                            break
+            else:
+                spawn_powerup()
 
-                    b.dy = ((b.ycor() - paddle_a.ycor()) / 50.0) * abs(b.dx)
-                    if abs(b.dy) < 1.5: b.dy = 1.5 if b.dy >= 0 else -1.5
-                    last_hitter = "A"; paddle_sound()
-                    if paddle_boost_hits["A"] > 0:
-                        paddle_boost_hits["A"] -= 1
-                        if paddle_boost_hits["A"] == 0: paddle_a.shapesize(5, 1)
+            # Check if second ball should spawn
+            if second_ball_spawn_time > 0 and time.time() >= second_ball_spawn_time:
+                ball2.showturtle()
+                balls.append(ball2)
+                second_ball_spawn_time = 0  # Reset timer
 
-        if score_a >= winning_score or score_b >= winning_score:
-            game_active = False
-            menu_pen.goto(0, 0)
-            msg = "PLAYER A WINS!" if score_a >= winning_score else "PLAYER B WINS!"
-            menu_pen.write(f"{msg}\nSPACE TO RESTART", align="center", font=("Courier", 30, "bold"))
+            if ghost_mode:
+                if time.time() > ghost_end:
+                    ghost_mode = False; ball.color("white")
+                else:
+                    ball.color("#222222")
+
+            # Paddle B Collision with Momentum
+            for b in balls:
+                if (b.xcor() > paddle_b.xcor() - 20 and b.xcor() < paddle_b.xcor()) and (b.dx > 0):
+                    hit_range = 110 if paddle_boost_hits["B"] > 0 else 60
+                    if abs(b.ycor() - paddle_b.ycor()) < hit_range:
+                        b.setx(paddle_b.xcor() - 20)
+                        b.dx *= -1.05
+                        
+                        # End ghost mode on paddle collision
+                        if ghost_mode:
+                            ghost_mode = False
+                        
+                        # Check for moving hit
+                        if (keys_pressed["i"] or keys_pressed["n"]) and speed_boost_count < 3:
+                            b.dx *= 1.2  # Add 20% extra speed
+                            speed_boost_count += 1
+                            b.color("yellow")
+                        else:
+                            b.color("white")
+
+                        # Cap speed at 15.0
+                        if abs(b.dx) > 15.0:
+                            b.dx = -15.0 if b.dx < 0 else 15.0
+
+                        b.dy = ((b.ycor() - paddle_b.ycor()) / 50.0) * abs(b.dx)
+                        if abs(b.dy) < 1.5: b.dy = 1.5 if b.dy >= 0 else -1.5
+                        last_hitter = "B"; paddle_sound()
+                        if paddle_boost_hits["B"] > 0:
+                            paddle_boost_hits["B"] -= 1
+                            if paddle_boost_hits["B"] == 0: paddle_b.shapesize(5, 1)
+
+            # Paddle A Collision with Momentum
+            for b in balls:
+                if (b.xcor() < paddle_a.xcor() + 20 and b.xcor() > paddle_a.xcor()) and (b.dx < 0):
+                    hit_range = 110 if paddle_boost_hits["A"] > 0 else 60
+                    if abs(b.ycor() - paddle_a.ycor()) < hit_range:
+                        b.setx(paddle_a.xcor() + 20)
+                        b.dx *= -1.05
+                        
+                        # End ghost mode on paddle collision
+                        if ghost_mode:
+                            ghost_mode = False
+                        
+                        # Check for moving hit
+                        if (keys_pressed["q"] or keys_pressed["z"]) and speed_boost_count < 3:
+                            b.dx *= 1.2  # Add 20% extra speed
+                            speed_boost_count += 1
+                            b.color("yellow")
+                        else:
+                            b.color("white")
+
+                        # Cap speed at 15.0
+                        if abs(b.dx) > 15.0:
+                            b.dx = -15.0 if b.dx < 0 else 15.0
+
+                        b.dy = ((b.ycor() - paddle_a.ycor()) / 50.0) * abs(b.dx)
+                        if abs(b.dy) < 1.5: b.dy = 1.5 if b.dy >= 0 else -1.5
+                        last_hitter = "A"; paddle_sound()
+                        if paddle_boost_hits["A"] > 0:
+                            paddle_boost_hits["A"] -= 1
+                            if paddle_boost_hits["A"] == 0: paddle_a.shapesize(5, 1)
+
+            if score_a >= winning_score or score_b >= winning_score:
+                game_active = False
+                menu_pen.goto(0, 0)
+                msg = "PLAYER A WINS!" if score_a >= winning_score else "PLAYER B WINS!"
+                menu_pen.write(f"{msg}\nSPACE TO RESTART", align="center", font=("Courier", 30, "bold"))
+    except Exception:
+        break

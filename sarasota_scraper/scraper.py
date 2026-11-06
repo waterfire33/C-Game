@@ -27,7 +27,7 @@ def search_sarasota_real_estate(street_name):
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
-    url = "https://www.sc-pa.com/propertysearch/Result"
+    url = "https://www.sarasotapropertyappraiser.gov/propertysearch/Result"
     payload = {"AddressKeywords": street_name.upper(), "search": "search"}
     
     print(f"\nSearching database for: {street_name.upper()}...")

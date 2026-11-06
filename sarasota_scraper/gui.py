@@ -5,6 +5,7 @@ import os
 import json
 import tempfile
 import subprocess
+import shutil
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import ttk, filedialog
@@ -14,6 +15,150 @@ from datetime import datetime
 # Import scraper functions (keeps core logic unchanged)
 from scraper import search_sarasota_real_estate, save_to_csv
 
+
+# ==============================================================================
+# Cross-Platform OS Compatibility Helpers (Windows, macOS, Linux)
+# ==============================================================================
+
+def get_app_config_dir():
+    """Returns a platform-appropriate directory for persistent config/state."""
+    if sys.platform == "win32":
+        base = os.getenv("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
+        app_dir = os.path.join(base, "SarasotaScraper")
+    elif sys.platform == "darwin":
+        app_dir = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "sarasota_scraper")
+    else:
+        base = os.getenv("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+        app_dir = os.path.join(base, "sarasota_scraper")
+    os.makedirs(app_dir, exist_ok=True)
+    return app_dir
+
+
+def get_downloads_dir():
+    """Resolves the user's Downloads directory across Windows, macOS, and Linux."""
+    if sys.platform == "win32":
+        try:
+            import winreg
+            sub_key = r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key) as key:
+                downloads_path, _ = winreg.QueryValueEx(key, "{374DE290-123F-4565-9164-39C4925E467B}")
+                if os.path.isdir(downloads_path):
+                    return downloads_path
+        except Exception:
+            pass
+    downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+    os.makedirs(downloads, exist_ok=True)
+    return downloads
+
+
+def resource_path(relative_path):
+    """Get absolute path to resource, compatible with development and PyInstaller bundles."""
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+
+
+def enumerate_system_printers():
+    """Enumerates installed printers across Windows, macOS, and Linux."""
+    printers = []
+    default_printer = None
+
+    if sys.platform == "win32":
+        # 1. Try pywin32 win32print
+        try:
+            import win32print
+            flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+            printer_records = win32print.EnumPrinters(flags)
+            printers = [p[2] for p in printer_records]
+            try:
+                default_printer = win32print.GetDefaultPrinter()
+            except Exception:
+                pass
+        except ImportError:
+            pass
+
+        # 2. Fallback: PowerShell Get-CimInstance (standard on Windows 10/11)
+        if not printers:
+            try:
+                cmd = ["powershell.exe", "-NoProfile", "-Command", "Get-CimInstance Win32_Printer | Select-Object -ExpandProperty Name"]
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                if proc.returncode == 0:
+                    printers = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+            except Exception:
+                pass
+    else:
+        # macOS / Linux CUPS lpstat
+        lpstat_bin = shutil.which("lpstat") or "/usr/bin/lpstat"
+        try:
+            proc = subprocess.run([lpstat_bin, "-p"], capture_output=True, text=True, timeout=5)
+            for line in proc.stdout.splitlines():
+                parts = line.split()
+                if len(parts) >= 2 and parts[0] == "printer":
+                    printers.append(parts[1])
+            # Check default printer
+            def_proc = subprocess.run([lpstat_bin, "-d"], capture_output=True, text=True, timeout=5)
+            if def_proc.returncode == 0 and "destination:" in def_proc.stdout:
+                default_printer = def_proc.stdout.split("destination:")[1].strip()
+        except Exception:
+            pass
+
+    return printers, default_printer
+
+
+def print_text_file(filename, printer=None):
+    """Prints a text file using the native OS spooler. Returns (success, message)."""
+    if sys.platform == "win32":
+        try:
+            import win32print
+            import win32api
+
+            if printer:
+                win32api.ShellExecute(0, "printto", filename, f'"{printer}"', ".", 0)
+                return True, f"Sent to Windows printer: {printer}"
+            else:
+                if hasattr(os, "startfile"):
+                    os.startfile(filename, "print")
+                    return True, "Sent to Windows default printer via startfile"
+                else:
+                    win32api.ShellExecute(0, "print", filename, None, ".", 0)
+                    return True, "Sent to Windows default printer via ShellExecute"
+        except ImportError:
+            # Fallback if pywin32 is not present
+            if hasattr(os, "startfile"):
+                try:
+                    os.startfile(filename, "print")
+                    return True, "Sent to Windows default printer"
+                except Exception as e:
+                    return False, f"Windows startfile print failed: {e}"
+            else:
+                try:
+                    ps_cmd = f"Start-Process -FilePath '{filename}' -Verb Print -PassThru | Out-Null"
+                    if printer:
+                        ps_cmd = f"Get-Content '{filename}' | Out-Printer -Name '{printer}'"
+                    proc = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True)
+                    if proc.returncode == 0:
+                        return True, f"Sent to printer via PowerShell: {printer or 'default'}"
+                    return False, f"PowerShell print error: {proc.stderr}"
+                except Exception as e:
+                    return False, f"Printing failed: {e}"
+    else:
+        # macOS / Linux CUPS lpr
+        lpr_bin = shutil.which("lpr") or "/usr/bin/lpr"
+        cmd = [lpr_bin]
+        if printer:
+            cmd += ["-P", printer]
+        cmd.append(filename)
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode == 0:
+            return True, f"Sent to printer (via lpr): {filename}"
+        return False, f"Printing failed: {proc.returncode} {proc.stderr}"
+
+
+# ==============================================================================
+# GUI Components
+# ==============================================================================
 
 class QueueWriter:
     """File-like object that puts written text into a queue."""
@@ -34,21 +179,19 @@ class ScraperGUI(tk.Tk):
         self.title("Sarasota Scraper GUI")
         self.geometry("800x600")
 
-        # Create a scaled font (5x) based on the default GUI font
+        # Responsive font scaling:
+        # macOS Retina screens benefit from larger scaling (5x), while Windows/Linux use 1.5x
         default_font = tkfont.nametofont("TkDefaultFont")
-        scaled_size = max(1, int(default_font.cget("size") * 5))
+        font_multiplier = 5 if sys.platform == "darwin" else 1.5
+        scaled_size = max(10, int(default_font.cget("size") * font_multiplier))
         self.font = tkfont.Font(family=default_font.cget("family"), size=scaled_size)
-        # Apply as the default font for widgets
         self.option_add("*Font", self.font)
 
         self.queue = queue.Queue()
         self.current_results = None
-        # Config path for persisting last-used printer (per-user, macOS Application Support)
-        app_support_dir = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "sarasota_scraper")
-        try:
-            os.makedirs(app_support_dir, exist_ok=True)
-        except Exception:
-            pass
+
+        # Cross-platform configuration directory
+        app_support_dir = get_app_config_dir()
         self._config_path = os.path.join(app_support_dir, "printer_config.json")
         self.last_printer = self._load_last_printer()
 
@@ -63,7 +206,6 @@ class ScraperGUI(tk.Tk):
         ttk.Label(row1, text="Street name:").pack(side=tk.LEFT)
         self.entry = ttk.Entry(row1)
         self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=6)
-        # Bind Return key to start search
         self.entry.bind('<Return>', lambda e: self.start_search())
 
         self.search_btn = ttk.Button(row1, text="Search", command=self.start_search)
@@ -73,33 +215,27 @@ class ScraperGUI(tk.Tk):
         row2 = ttk.Frame(self)
         row2.pack(fill=tk.X, padx=8, pady=(0, 8))
 
-        # Save button: explicitly label to indicate it saves to Downloads
         self.save_btn = ttk.Button(row2, text="Save to Downloads", command=self.save_results)
         self.save_btn.pack(side=tk.LEFT, padx=6)
         self.save_btn.state(["disabled"])
 
-        # Clear screen button on its own row so it's always visible
         self.clear_btn = ttk.Button(row2, text="Clear Screen", command=self.clear_screen)
         self.clear_btn.pack(side=tk.LEFT, padx=6)
 
-        # Print button
         self.print_btn = ttk.Button(row2, text="Print", command=self.print_results)
         self.print_btn.pack(side=tk.LEFT, padx=6)
         self.print_btn.state(["disabled"])
 
-        # ScrolledText is a tk widget; set font explicitly to ensure scaling
+        # Log Display
         self.log = ScrolledText(self, wrap=tk.WORD, state=tk.DISABLED, font=self.font)
-        self.log.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0,8))
+        self.log.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
     def append_log(self, text):
         self.log.configure(state=tk.NORMAL)
-        # Insert new logs at the top so newest entries are first
         try:
             self.log.insert('1.0', text)
-            # Keep view pinned to top so new entries are visible
             self.log.yview_moveto(0.0)
         except Exception:
-            # Fallback to append
             self.log.insert(tk.END, text)
             self.log.see(tk.END)
         self.log.configure(state=tk.DISABLED)
@@ -109,7 +245,6 @@ class ScraperGUI(tk.Tk):
         if not street:
             return
 
-        # Disable buttons while running
         self.search_btn.state(["disabled"])
         self.save_btn.state(["disabled"])
         self.current_results = None
@@ -118,7 +253,6 @@ class ScraperGUI(tk.Tk):
         worker.start()
 
     def _run_search_thread(self, street):
-        # Redirect stdout for the duration so print() inside scraper goes to the GUI
         qwriter = QueueWriter(self.queue)
         old_stdout = sys.stdout
         try:
@@ -130,7 +264,6 @@ class ScraperGUI(tk.Tk):
         finally:
             sys.stdout = old_stdout
 
-        # Send results object to the main thread
         self.queue.put(("RESULTS", results))
         self.queue.put(("LOG", "\nSearch complete.\n"))
 
@@ -142,7 +275,6 @@ class ScraperGUI(tk.Tk):
                     self.append_log(payload)
                 elif typ == "RESULTS":
                     self.current_results = payload
-                    # Re-enable the Search button so user can run another query
                     try:
                         self.search_btn.state(["!disabled"])
                     except Exception:
@@ -164,27 +296,20 @@ class ScraperGUI(tk.Tk):
         except queue.Empty:
             pass
 
-        # Re-schedule
         self.after(100, self._poll_queue)
 
     def save_results(self):
         if not self.current_results:
             self.append_log("\nNo results to save.\n")
             return
-        # Auto-save directly to the user's Downloads folder on macOS
-        downloads_dir = os.path.expanduser("~/Downloads")
-        try:
-            os.makedirs(downloads_dir, exist_ok=True)
-        except Exception:
-            pass
 
+        downloads_dir = get_downloads_dir()
         base_name = self.entry.get().strip().replace(' ', '_').upper() or 'RESULTS'
         name, ext = f"{base_name}_results", '.csv'
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = os.path.join(downloads_dir, f"{name}_{ts}{ext}")
 
         try:
-            # Run save in a thread to avoid blocking briefly
             t = threading.Thread(target=self._save_thread, args=(self.current_results, filename), daemon=True)
             t.start()
             self.append_log(f"\nSaving CSV to: {filename}\n")
@@ -199,16 +324,12 @@ class ScraperGUI(tk.Tk):
             self.queue.put(("LOG", f"Error saving CSV: {e}\n"))
 
     def clear_screen(self):
-        # Clear the log text and reset in-memory results
         self.log.configure(state=tk.NORMAL)
         self.log.delete("1.0", tk.END)
         self.log.configure(state=tk.DISABLED)
         self.current_results = None
         try:
             self.save_btn.state(["disabled"])
-        except Exception:
-            pass
-        try:
             self.print_btn.state(["disabled"])
         except Exception:
             pass
@@ -218,53 +339,45 @@ class ScraperGUI(tk.Tk):
             self.append_log("\nNo results to print.\n")
             return
 
-        # Ask user to choose a printer first (runs on main thread)
         printer = self._choose_printer()
         if not printer:
             self.append_log("\nPrint cancelled (no printer selected).\n")
             return
 
-        # Start print in background to avoid blocking UI
         t = threading.Thread(target=self._print_thread, args=(self.current_results, printer), daemon=True)
         t.start()
 
     def _choose_printer(self):
-        # Try to enumerate printers using lpstat
-        try:
-            proc = subprocess.run(["/usr/bin/lpstat", "-p"], capture_output=True, text=True)
-            out = proc.stdout
-            printers = []
-            for line in out.splitlines():
-                parts = line.split()
-                if len(parts) >= 2 and parts[0] == 'printer':
-                    printers.append(parts[1])
-        except Exception:
-            printers = []
+        printers, system_default = enumerate_system_printers()
 
         if not printers:
-            # No printers found
-            self.append_log("\nNo printers found on system (lpstat returned none).\n")
+            # If on Windows and enumeration is unavailable, allow default system printing
+            if sys.platform == "win32":
+                return "Default"
+            self.append_log("\nNo printers found on system.\n")
             return None
-        # Dialog to choose printer
+
         dlg = tk.Toplevel(self)
         dlg.title("Select Printer")
         dlg.transient(self)
         dlg.grab_set()
 
-        ttk.Label(dlg, text="Choose printer:").pack(padx=12, pady=(12,6))
-        # Use persisted last_printer if available and present in the current list
+        ttk.Label(dlg, text="Choose printer:").pack(padx=12, pady=(12, 6))
+
         default = printers[0]
         if hasattr(self, 'last_printer') and self.last_printer in printers:
             default = self.last_printer
+        elif system_default and system_default in printers:
+            default = system_default
+
         printer_var = tk.StringVar(value=default)
         cmb = ttk.Combobox(dlg, values=printers, textvariable=printer_var, state="readonly")
-        cmb.pack(fill=tk.X, padx=12, pady=(0,12))
+        cmb.pack(fill=tk.X, padx=12, pady=(0, 12))
 
         selected = {"printer": None}
 
         def on_ok():
             selected["printer"] = printer_var.get()
-            # Persist the choice
             try:
                 self._save_last_printer(selected["printer"])
             except Exception:
@@ -275,7 +388,7 @@ class ScraperGUI(tk.Tk):
             dlg.destroy()
 
         btn_frame = ttk.Frame(dlg)
-        btn_frame.pack(fill=tk.X, padx=12, pady=(0,12))
+        btn_frame.pack(fill=tk.X, padx=12, pady=(0, 12))
         ttk.Button(btn_frame, text="Print", command=on_ok).pack(side=tk.LEFT)
         ttk.Button(btn_frame, text="Cancel", command=on_cancel).pack(side=tk.LEFT, padx=8)
 
@@ -283,36 +396,34 @@ class ScraperGUI(tk.Tk):
         return selected["printer"]
 
     def _print_thread(self, results, printer=None):
+        filename = None
         try:
-            # Create a temporary text file with a readable representation of the results
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', encoding='utf-8') as tf:
                 filename = tf.name
                 tf.write('Sarasota Scraper Results\n')
                 tf.write(f'Generated: {datetime.now().isoformat()}\n\n')
                 for rec in results:
-                    # Write each dict on its own line in a readable format
                     line = ', '.join(f"{k}: {v}" for k, v in rec.items())
                     tf.write(line + "\n")
 
-            # Call macOS printing utility `lpr`
-            cmd = ["/usr/bin/lpr"]
-            if printer:
-                cmd += ["-P", printer]
-            cmd.append(filename)
-            proc = subprocess.run(cmd, capture_output=True, text=True)
-            if proc.returncode == 0:
-                self.queue.put(("LOG", f"\nSent to printer (via lpr): {filename}\n"))
+            printer_target = None if printer == "Default" else printer
+            success, msg = print_text_file(filename, printer_target)
+            if success:
+                self.queue.put(("LOG", f"\n{msg}\n"))
             else:
-                self.queue.put(("LOG", f"\nPrinting failed: {proc.returncode} {proc.stderr}\n"))
+                self.queue.put(("LOG", f"\nPrinting failed: {msg}\n"))
         except Exception as e:
             self.queue.put(("LOG", f"\nError during printing: {e}\n"))
         finally:
-            # Attempt to remove the temp file
-            try:
-                if os.path.exists(filename):
+            if filename and os.path.exists(filename):
+                try:
+                    # Windows print spooler needs a moment before temp file deletion
+                    if sys.platform == "win32":
+                        import time
+                        time.sleep(3)
                     os.remove(filename)
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
     def _load_last_printer(self):
         try:
